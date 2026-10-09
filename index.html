@@ -85,11 +85,11 @@
 
     .header-actions {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       align-items: center;
+      flex-wrap: wrap;
     }
 
-    /* Toggle Modo Inmediato / En Vivo */
     .mode-switch-wrap {
       display: flex;
       align-items: center;
@@ -130,7 +130,7 @@
       color: var(--c-dark-teal);
       font-size: 0.8rem;
       font-weight: 700;
-      padding: 7px 14px;
+      padding: 7px 12px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -155,11 +155,7 @@
       border-color: var(--c-crimson);
       color: var(--c-crimson);
     }
-    .btn-glass.btn-danger:hover {
-      background: rgba(174, 32, 18, 0.22);
-    }
 
-    /* Pestañas Móviles */
     .mobile-nav-tabs {
       display: none;
       padding: 6px 14px;
@@ -189,7 +185,6 @@
       border-color: var(--c-dark-teal);
     }
 
-    /* Layout Responsive Principal */
     main {
       flex: 1;
       display: grid;
@@ -252,7 +247,7 @@
       flex-direction: column;
       gap: 12px;
       flex: 1;
-      min-height: 440px;
+      min-height: 460px;
     }
 
     .chart-panel-header {
@@ -288,7 +283,7 @@
       flex: 1;
       width: 100%;
       height: 100%;
-      min-height: 360px;
+      min-height: 380px;
       overflow: hidden;
       background: #ffffff;
       border: 1.5px solid var(--glass-border-strong);
@@ -301,7 +296,6 @@
       display: block;
     }
 
-    /* Columna Derecha */
     .controls-col {
       display: flex;
       flex-direction: column;
@@ -379,7 +373,6 @@
       font-weight: 500;
     }
 
-    /* Entrada de Dosis y Unidades */
     .dose-input-section {
       display: flex;
       flex-direction: column;
@@ -412,7 +405,6 @@
       box-shadow: 0 0 0 2px rgba(10, 147, 150, 0.2);
     }
 
-    /* Selector desplegable de unidades */
     .unit-selector {
       background: var(--c-dark-teal);
       color: #ffffff;
@@ -480,7 +472,6 @@
       transform: scale(0.98);
     }
 
-    /* Historial */
     .history-list {
       display: flex;
       flex-direction: column;
@@ -611,7 +602,7 @@
       <span>Simulador Farmacológico Hemodinámico</span>
     </div>
     <div class="header-actions">
-      <!-- Toggle de Modos: Inmediato (Default) vs En Vivo -->
+      <!-- Toggle de Modos -->
       <div class="mode-switch-wrap">
         <button class="mode-btn active" id="btnModeImmediate" title="Calcula y muestra la curva completa al inyectar">⚡ Inmediato</button>
         <button class="mode-btn" id="btnModeLive" title="Trazado continuo en tiempo real">⏱ En Vivo</button>
@@ -625,6 +616,12 @@
       <button class="btn-glass" id="btnTogglePlay" style="display:none;" aria-label="Pausar / Reanudar">
         <span id="playIcon">⏸</span> <span id="playText">Pausar</span>
       </button>
+
+      <!-- Botón de Exportar Imagen -->
+      <button class="btn-glass" id="btnExportImage" title="Descargar gráfica con leyenda y tabla de dosis">
+        <span>📸</span> <span>Exportar Imagen</span>
+      </button>
+
       <button class="btn-glass btn-danger" id="btnReset" aria-label="Reiniciar">
         <span>🔄</span> <span>Reiniciar</span>
       </button>
@@ -641,7 +638,6 @@
   </nav>
 
   <main>
-    <!-- Viewport: Polígrafo y Telemetría -->
     <section class="viewport-col" id="viewSection">
       <div class="liquid-glass telemetry-bar">
         <div class="metric-item">
@@ -710,7 +706,6 @@
 
         <div class="drug-grid" id="drugGrid"></div>
 
-        <!-- Entrada de Dosis con Selector de Unidades -->
         <div class="dose-input-section">
           <label style="font-size:0.72rem; font-weight:800; color:var(--c-dark-teal); letter-spacing:0.5px">DOSIS Y UNIDAD</label>
           <div class="input-row">
@@ -736,7 +731,6 @@
         </button>
       </div>
 
-      <!-- Historial -->
       <div class="liquid-glass panel-box" style="flex:1;">
         <div class="panel-title">
           <span>Historial de Respuestas</span>
@@ -767,7 +761,7 @@
     ];
 
     let selectedDrug = DRUGS[0];
-    let simulationMode = 'immediate'; // 'immediate' (default) o 'live'
+    let simulationMode = 'immediate';
     let isRunning = true;
     let simTime = 0;
 
@@ -789,7 +783,6 @@
     const defaultYMin = 20.0;
     const defaultYMax = 240.0;
 
-    // Crear línea de base inicial de 5 segundos
     for (let i = 0; i < 50; i++) {
       simTime += 0.1;
       historyPoints.push({ t: simTime, sys: 120, dia: 80, pam: 93.3, fc: 72 });
@@ -863,11 +856,7 @@
       if (historyPoints.length > 5000) historyPoints.shift();
     }
 
-    /* ==========================================================
-       3. CONVERSIÓN DE DOSIS Y EJECUCIÓN
-       ========================================================== */
     function convertDoseToStandardMg(dose, unit) {
-      // Asume peso estándar de laboratorio de 70 kg si la unidad es por kg
       const assumedWeightKg = 70.0;
       switch (unit) {
         case 'µg': return dose / 1000.0;
@@ -900,7 +889,6 @@
       injectionEvents.push(evt);
       updateHistoryUI();
 
-      // En Modo Inmediato: se simula un bloque temporal de golpe (25 segundos a dt=0.1s)
       if (simulationMode === 'immediate') {
         for (let i = 0; i < 250; i++) {
           updatePhysics(0.1);
@@ -924,7 +912,7 @@
     }
 
     /* ==========================================================
-       4. CANVAS RESPONSIVO
+       3. CANVAS RESPONSIVO CON ETIQUETAS COMPLETAS DE DOSIS
        ========================================================== */
     const canvas = document.getElementById('polygraphCanvas');
     const ctx = canvas.getContext('2d');
@@ -977,7 +965,7 @@
 
       const valToY = v => H - ((v - currentYMin) / (currentYMax - currentYMin)) * H;
 
-      // Rejilla
+      // Rejilla de Fondo
       ctx.strokeStyle = 'rgba(0, 95, 115, 0.08)';
       ctx.lineWidth = 1;
       const gridStep = 40 * dpr;
@@ -1029,27 +1017,263 @@
       renderLine('dia', '#BB3E03', 2.0);
       renderLine('fc',  '#0A9396', 2.4);
 
-      // Inyecciones
-      injectionEvents.forEach(evt => {
-        const lastT = historyPoints[historyPoints.length - 1]?.t || 0;
+      // Renderizado de las marcas de DOSIS administradas
+      const lastT = historyPoints[historyPoints.length - 1]?.t || 0;
+      let badgeYLevel = 22 * dpr;
+
+      injectionEvents.forEach((evt, idx) => {
         const timeDiff = lastT - evt.timestamp;
         const ptsAgo = timeDiff / 0.1;
+
         if (ptsAgo >= 0 && ptsAgo <= maxPointsOnCanvas) {
           const x = W - (ptsAgo * stepX);
+
+          // Línea vertical punteada
           ctx.strokeStyle = evt.color;
-          ctx.lineWidth = 1.6 * dpr;
-          ctx.setLineDash([5, 3]);
+          ctx.lineWidth = 1.5 * dpr;
+          ctx.setLineDash([4, 3]);
           ctx.beginPath();
           ctx.moveTo(x, 0);
           ctx.lineTo(x, H);
           ctx.stroke();
           ctx.setLineDash([]);
 
+          // Pin superior
           ctx.fillStyle = evt.color;
-          ctx.font = `bold ${10 * dpr}px -apple-system, sans-serif`;
-          ctx.fillText(`▲ ${evt.drug}`, x + 4, 18 * dpr);
+          ctx.beginPath();
+          ctx.arc(x, 6 * dpr, 4 * dpr, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Etiqueta completa con nombre y dosis
+          const text = `${evt.drug}: ${evt.dose} ${evt.unit}`;
+          ctx.font = `bold ${9.5 * dpr}px -apple-system, sans-serif`;
+          const textWidth = ctx.measureText(text).width;
+
+          // Fondo tipo cartela
+          const yPos = 20 * dpr + ((idx % 3) * (18 * dpr));
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.strokeStyle = evt.color;
+          ctx.lineWidth = 1 * dpr;
+          ctx.fillRect(x + 3 * dpr, yPos - 11 * dpr, textWidth + 8 * dpr, 14 * dpr);
+          ctx.strokeRect(x + 3 * dpr, yPos - 11 * dpr, textWidth + 8 * dpr, 14 * dpr);
+
+          // Texto
+          ctx.fillStyle = '#001219';
+          ctx.fillText(text, x + 7 * dpr, yPos);
         }
       });
+    }
+
+    /* ==========================================================
+       4. GENERADOR Y DESCARGA DE IMAGEN COMPLETA (INFORME)
+       ========================================================== */
+    function exportGraphAsImage() {
+      // Creamos un canvas temporal de alta resolución para renderizar el informe completo
+      const exportCanvas = document.createElement('canvas');
+      const expCtx = exportCanvas.getContext('2d');
+
+      const expW = 1200;
+      const graphH = 500;
+      const tableRowH = 26;
+      const tableHeaderH = 34;
+      const tableH = Math.max(80, tableHeaderH + (injectionEvents.length * tableRowH) + 20);
+      const headerH = 90;
+      const expH = headerH + graphH + tableH + 40;
+
+      exportCanvas.width = expW;
+      exportCanvas.height = expH;
+
+      // 1. Fondo general blanco
+      expCtx.fillStyle = '#ffffff';
+      expCtx.fillRect(0, 0, expW, expH);
+
+      // 2. Encabezado institucional
+      expCtx.fillStyle = '#001219';
+      expCtx.font = 'bold 22px -apple-system, sans-serif';
+      expCtx.fillText('CARDIOLAB 3.0 — REPORTE DE SIMULACIÓN FARMACOLÓGICA', 30, 42);
+
+      expCtx.fillStyle = '#005F73';
+      expCtx.font = '13px -apple-system, sans-serif';
+      const nowStr = new Date().toLocaleString();
+      expCtx.fillText(`Generado: ${nowStr}  |  Duración de sesión: ${(simTime).toFixed(1)} s`, 30, 66);
+
+      // Leyenda superior en la imagen
+      const legendX = expW - 460;
+      expCtx.font = 'bold 12px -apple-system, sans-serif';
+      
+      expCtx.fillStyle = '#CA6702';
+      expCtx.fillRect(legendX, 35, 12, 12);
+      expCtx.fillText('PA Sistólica', legendX + 18, 46);
+
+      expCtx.fillStyle = '#BB3E03';
+      expCtx.fillRect(legendX + 110, 35, 12, 12);
+      expCtx.fillText('PA Diastólica', legendX + 128, 46);
+
+      expCtx.fillStyle = '#0A9396';
+      expCtx.fillRect(legendX + 220, 35, 12, 12);
+      expCtx.fillText('Frecuencia Cardíaca', legendX + 238, 46);
+
+      // Línea divisoria
+      expCtx.strokeStyle = '#0A9396';
+      expCtx.lineWidth = 1.5;
+      expCtx.beginPath();
+      expCtx.moveTo(30, 80);
+      expCtx.lineTo(expW - 30, 80);
+      expCtx.stroke();
+
+      // 3. Dibujar la gráfica del polígrafo en el canvas de exportación
+      const gX = 30;
+      const gY = headerH;
+      const gW = expW - 60;
+      const gH = graphH;
+
+      // Fondo de gráfica
+      expCtx.fillStyle = '#fbfdfd';
+      expCtx.fillRect(gX, gY, gW, gH);
+      expCtx.strokeStyle = 'rgba(0, 95, 115, 0.3)';
+      expCtx.strokeRect(gX, gY, gW, gH);
+
+      // Rejilla de la gráfica
+      const points = historyPoints.slice(-maxPointsOnCanvas);
+      const yMin = currentYMin;
+      const yMax = currentYMax;
+      const toY = v => gY + gH - ((v - yMin) / (yMax - yMin)) * gH;
+
+      // Líneas horizontales de escala
+      expCtx.strokeStyle = 'rgba(0, 95, 115, 0.12)';
+      expCtx.lineWidth = 1;
+      const range = yMax - yMin;
+      const tick = range > 360 ? 80 : (range > 260 ? 60 : 40);
+      const startTick = Math.ceil(yMin / tick) * tick;
+
+      for (let val = startTick; val < yMax; val += tick) {
+        const y = toY(val);
+        expCtx.beginPath();
+        expCtx.moveTo(gX, y);
+        expCtx.lineTo(gX + gW, y);
+        expCtx.stroke();
+
+        expCtx.fillStyle = '#005F73';
+        expCtx.font = 'bold 11px -apple-system, sans-serif';
+        expCtx.fillText(`${val}`, gX + 8, y - 4);
+      }
+
+      // Trazados
+      if (points.length > 1) {
+        const stepX = gW / (maxPointsOnCanvas - 1);
+        const offset = maxPointsOnCanvas - points.length;
+
+        function plotCurve(prop, color, width) {
+          expCtx.strokeStyle = color;
+          expCtx.lineWidth = width;
+          expCtx.beginPath();
+          for (let i = 0; i < points.length; i++) {
+            const x = gX + (offset + i) * stepX;
+            const y = toY(points[i][prop]);
+            if (i === 0) expCtx.moveTo(x, y);
+            else expCtx.lineTo(x, y);
+          }
+          expCtx.stroke();
+        }
+
+        plotCurve('sys', '#CA6702', 2.5);
+        plotCurve('dia', '#BB3E03', 2.0);
+        plotCurve('fc',  '#0A9396', 2.5);
+
+        // Inyecciones en la gráfica exportada
+        const lastT = points[points.length - 1].t;
+        injectionEvents.forEach((evt, idx) => {
+          const timeAgo = lastT - evt.timestamp;
+          const ptsAgo = timeAgo / 0.1;
+          if (ptsAgo >= 0 && ptsAgo <= maxPointsOnCanvas) {
+            const x = gX + gW - (ptsAgo * stepX);
+
+            expCtx.strokeStyle = evt.color;
+            expCtx.lineWidth = 1.5;
+            expCtx.setLineDash([4, 3]);
+            expCtx.beginPath();
+            expCtx.moveTo(x, gY);
+            expCtx.lineTo(x, gY + gH);
+            expCtx.stroke();
+            expCtx.setLineDash([]);
+
+            // Etiqueta
+            const text = `${evt.drug}: ${evt.dose} ${evt.unit}`;
+            expCtx.font = 'bold 11px -apple-system, sans-serif';
+            const tw = expCtx.measureText(text).width;
+            const tagY = gY + 22 + ((idx % 3) * 20);
+
+            expCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+            expCtx.fillRect(x + 4, tagY - 12, tw + 8, 16);
+            expCtx.strokeStyle = evt.color;
+            expCtx.strokeRect(x + 4, tagY - 12, tw + 8, 16);
+
+            expCtx.fillStyle = '#001219';
+            expCtx.fillText(text, x + 8, tagY);
+          }
+        });
+      }
+
+      // 4. Tabla inferior con el detalle de dosis administradas
+      const tY = gY + gH + 24;
+      expCtx.fillStyle = '#005F73';
+      expCtx.font = 'bold 14px -apple-system, sans-serif';
+      expCtx.fillText('DETALLE CRONOLÓGICO DE DOSIS ADMINISTRADAS', 30, tY);
+
+      // Cabecera de la tabla
+      const thY = tY + 12;
+      expCtx.fillStyle = 'rgba(0, 95, 115, 0.1)';
+      expCtx.fillRect(30, thY, expW - 60, 24);
+      expCtx.strokeStyle = 'rgba(0, 95, 115, 0.3)';
+      expCtx.strokeRect(30, thY, expW - 60, 24);
+
+      expCtx.fillStyle = '#001219';
+      expCtx.font = 'bold 11px -apple-system, sans-serif';
+      expCtx.fillText('#', 45, thY + 16);
+      expCtx.fillText('FÁRMACO', 90, thY + 16);
+      expCtx.fillText('DOSIS APLICADA', 320, thY + 16);
+      expCtx.fillText('TIEMPO (s)', 540, thY + 16);
+      expCtx.fillText('PAM BASAL', 720, thY + 16);
+      expCtx.fillText('FC BASAL', 920, thY + 16);
+
+      // Filas de dosis
+      if (injectionEvents.length === 0) {
+        expCtx.fillStyle = '#666';
+        expCtx.font = 'italic 12px -apple-system, sans-serif';
+        expCtx.fillText('No se aplicaron dosis en esta sesión.', 45, thY + 45);
+      } else {
+        injectionEvents.forEach((evt, i) => {
+          const rowY = thY + 24 + (i * tableRowH);
+          if (i % 2 === 1) {
+            expCtx.fillStyle = 'rgba(0, 95, 115, 0.04)';
+            expCtx.fillRect(30, rowY, expW - 60, tableRowH);
+          }
+          expCtx.strokeStyle = 'rgba(0, 95, 115, 0.15)';
+          expCtx.strokeRect(30, rowY, expW - 60, tableRowH);
+
+          expCtx.font = '11px -apple-system, sans-serif';
+          expCtx.fillStyle = '#001219';
+          expCtx.fillText(`${i + 1}`, 45, rowY + 17);
+
+          // Color y nombre
+          expCtx.fillStyle = evt.color;
+          expCtx.font = 'bold 11px -apple-system, sans-serif';
+          expCtx.fillText(evt.drug, 90, rowY + 17);
+
+          expCtx.fillStyle = '#001219';
+          expCtx.font = '11px -apple-system, sans-serif';
+          expCtx.fillText(`${evt.dose} ${evt.unit}`, 320, rowY + 17);
+          expCtx.fillText(`${evt.timestamp.toFixed(1)} s`, 540, rowY + 17);
+          expCtx.fillText(`${evt.baselinePAM} mmHg`, 720, rowY + 17);
+          expCtx.fillText(`${evt.baselineFC} lpm`, 920, rowY + 17);
+        });
+      }
+
+      // Descargar como PNG
+      const link = document.createElement('a');
+      link.download = `CardioLab_Grafica_${Date.now()}.png`;
+      link.href = exportCanvas.toDataURL('image/png');
+      link.click();
     }
 
     /* ==========================================================
@@ -1102,7 +1326,6 @@
       });
     }
 
-    // Toggle de Modo: Inmediato vs En Vivo
     const btnModeImmediate = document.getElementById('btnModeImmediate');
     const btnModeLive = document.getElementById('btnModeLive');
     const btnTogglePlay = document.getElementById('btnTogglePlay');
@@ -1160,6 +1383,7 @@
     });
 
     document.getElementById('btnInject').onclick = executeInjection;
+    document.getElementById('btnExportImage').onclick = exportGraphAsImage;
 
     btnTogglePlay.onclick = () => {
       isRunning = !isRunning;
@@ -1205,7 +1429,7 @@
     };
 
     /* ==========================================================
-       6. BUCLE PRINCIPAL
+       6. BUCLE PRINCIPAL (60 FPS)
        ========================================================== */
     let lastTime = performance.now();
     let simAccumulator = 0;
@@ -1214,7 +1438,6 @@
       const dt = (now - lastTime) / 1000;
       lastTime = now;
 
-      // En Modo En Vivo corre a tiempo real continuo
       if (simulationMode === 'live' && isRunning) {
         simAccumulator += dt;
         while (simAccumulator >= 0.1) {
