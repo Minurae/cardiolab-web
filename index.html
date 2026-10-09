@@ -46,7 +46,6 @@
       padding-bottom: env(safe-area-inset-bottom);
     }
 
-    /* Barra Superior */
     header {
       display: flex;
       justify-content: space-between;
@@ -602,9 +601,8 @@
       <span>Simulador Farmacológico Hemodinámico</span>
     </div>
     <div class="header-actions">
-      <!-- Toggle de Modos -->
       <div class="mode-switch-wrap">
-        <button class="mode-btn active" id="btnModeImmediate" title="Calcula y muestra la curva completa al inyectar">⚡ Inmediato</button>
+        <button class="mode-btn active" id="btnModeImmediate" title="Calcula y muestra la curva completa al inyectar">⚡ Inmediato (10s)</button>
         <button class="mode-btn" id="btnModeLive" title="Trazado continuo en tiempo real">⏱ En Vivo</button>
       </div>
 
@@ -617,7 +615,6 @@
         <span id="playIcon">⏸</span> <span id="playText">Pausar</span>
       </button>
 
-      <!-- Botón de Exportar Imagen -->
       <button class="btn-glass" id="btnExportImage" title="Descargar gráfica con leyenda y tabla de dosis">
         <span>📸</span> <span>Exportar Imagen</span>
       </button>
@@ -631,7 +628,6 @@
     </div>
   </header>
 
-  <!-- Pestañas móviles -->
   <nav class="mobile-nav-tabs" id="mobileTabs">
     <button class="mobile-tab-btn active" data-target="polygraph">📈 Gráfica & Métricas</button>
     <button class="mobile-tab-btn" data-target="controls">💉 Fármacos & Historial</button>
@@ -697,7 +693,6 @@
       </div>
     </section>
 
-    <!-- Controles -->
     <aside class="controls-col" id="controlsSection">
       <div class="liquid-glass panel-box">
         <div class="panel-title">
@@ -748,22 +743,22 @@
 
   <script>
     /* ==========================================================
-       1. FÁRMACOS Y CONFIGURACIÓN INICIAL
+       1. FÁRMACOS Y FARMACODINAMIA CALIBRADA
        ========================================================== */
     const DRUGS = [
-      { id: 'adr', name: 'Adrenalina', mech: 'Agonista α1, β1, β2', defaultUnit: 'µg', defaultDose: 10, color: '#CA6702' },
-      { id: 'nor', name: 'Noradrenalina', mech: 'Agonista α1, β1', defaultUnit: 'µg', defaultDose: 10, color: '#EE9B00' },
-      { id: 'iso', name: 'Isoprenalina', mech: 'Agonista β1, β2', defaultUnit: 'µg', defaultDose: 5, color: '#0A9396' },
-      { id: 'ach', name: 'Acetilcolina', mech: 'Agonista Muscarínico M2', defaultUnit: 'µg', defaultDose: 10, color: '#AE2012' },
-      { id: 'atr', name: 'Atropina', mech: 'Antagonista M2', defaultUnit: 'mg', defaultDose: 1, color: '#9B2226' },
-      { id: 'phe', name: 'Fentolamina', mech: 'Antagonista α1', defaultUnit: 'mg', defaultDose: 2, color: '#005F73' },
-      { id: 'pro', name: 'Propranolol', mech: 'Antagonista β1, β2', defaultUnit: 'mg', defaultDose: 2, color: '#0A9396' }
+      { id: 'adr', name: 'Adrenalina', mech: 'Agonista α1, β1, β2', defaultUnit: 'µg', defaultDose: 10, color: '#CA6702', isBlocker: false },
+      { id: 'nor', name: 'Noradrenalina', mech: 'Agonista α1, β1', defaultUnit: 'µg', defaultDose: 10, color: '#EE9B00', isBlocker: false },
+      { id: 'iso', name: 'Isoprenalina', mech: 'Agonista β1, β2', defaultUnit: 'µg', defaultDose: 5, color: '#0A9396', isBlocker: false },
+      { id: 'ach', name: 'Acetilcolina', mech: 'Agonista Muscarínico M2', defaultUnit: 'µg', defaultDose: 10, color: '#AE2012', isBlocker: false },
+      { id: 'atr', name: 'Atropina', mech: 'Antagonista M2', defaultUnit: 'mg', defaultDose: 1, color: '#9B2226', isBlocker: true },
+      { id: 'phe', name: 'Fentolamina', mech: 'Antagonista α1', defaultUnit: 'mg', defaultDose: 2, color: '#005F73', isBlocker: true },
+      { id: 'pro', name: 'Propranolol', mech: 'Antagonista β1, β2', defaultUnit: 'mg', defaultDose: 2, color: '#0A9396', isBlocker: true }
     ];
 
     let selectedDrug = DRUGS[0];
     let simulationMode = 'immediate';
     let isRunning = true;
-    let simTime = 0;
+    let simTime = 0.0;
 
     let systolic = 120.0;
     let diastolic = 80.0;
@@ -783,21 +778,23 @@
     const defaultYMin = 20.0;
     const defaultYMax = 240.0;
 
+    // Inicializar con línea basal limpia
     for (let i = 0; i < 50; i++) {
       simTime += 0.1;
       historyPoints.push({ t: simTime, sys: 120, dia: 80, pam: 93.3, fc: 72 });
     }
 
     /* ==========================================================
-       2. MOTOR FARMACODINÁMICO Y BARORREFLEJO
+       2. MOTOR FARMACOLÓGICO EXHAUSTIVO (TODAS LAS INTERACCIONES)
        ========================================================== */
     function updatePhysics(dt) {
       simTime += dt;
 
+      // Eliminación diferencial: Agonistas duran ~6-8s en aclararse; antagonistas persisten estables durante la sesión
       for (let d of DRUGS) {
         let conc = activeConcentrations[d.id];
         if (conc > 0) {
-          let kel = (d.defaultUnit === 'mg') ? 0.025 : 0.18;
+          let kel = d.isBlocker ? 0.0004 : 0.28; 
           activeConcentrations[d.id] = Math.max(0, conc * Math.exp(-kel * dt));
         }
       }
@@ -806,41 +803,66 @@
       let prop  = activeConcentrations['pro'];
       let atrop = activeConcentrations['atr'];
 
-      let a1_shift = 1.0 + (phent / 0.015);
-      let b1_shift = 1.0 + (prop / 0.012);
-      let b2_shift = 1.0 + (prop / 0.015);
-      let m2_shift = 1.0 + (atrop / 0.008);
+      // Desplazamiento competitivo de Schild: Shift = 1 + [B] / Kb
+      let alpha1_shift = 1.0 + (phent / 0.010);
+      let beta1_shift  = 1.0 + (prop  / 0.008);
+      let beta2_shift  = 1.0 + (prop  / 0.012);
+      let m2_shift     = 1.0 + (atrop / 0.005);
 
       let adr = activeConcentrations['adr'];
       let nor = activeConcentrations['nor'];
       let iso = activeConcentrations['iso'];
       let ach = activeConcentrations['ach'];
 
-      let act_a1 = (adr * 1.0 + nor * 1.6) / a1_shift;
-      let e_a1 = act_a1 / (0.012 + act_a1);
+      // Ocupación fraccional de receptores con desplazamiento
+      let act_a1 = (adr * 1.0 + nor * 1.9) / alpha1_shift;
+      let e_a1 = act_a1 / (0.010 + act_a1);
 
-      let act_b1 = (adr * 1.2 + nor * 0.8 + iso * 2.5) / b1_shift;
-      let e_b1 = act_b1 / (0.009 + act_b1);
+      let act_b1 = (adr * 1.25 + nor * 0.75 + iso * 3.0) / beta1_shift;
+      let e_b1 = act_b1 / (0.008 + act_b1);
 
-      let act_b2 = (adr * 0.95 + iso * 2.2) / b2_shift;
-      let e_b2 = act_b2 / (0.013 + act_b2);
+      let act_b2 = (adr * 1.20 + iso * 2.4) / beta2_shift;
+      let e_b2 = act_b2 / (0.011 + act_b2);
 
       let act_m2 = ach / m2_shift;
-      let e_m2 = act_m2 / (0.007 + act_m2);
+      let e_m2 = act_m2 / (0.006 + act_m2);
 
-      let targetRVP = 1.0 + (e_a1 * 1.4) - (e_b2 * 0.45) - (e_m2 * 0.25);
-      let targetSV  = 70.0 * (1.0 + (e_b1 * 0.6) - (e_m2 * 0.35));
+      // Resistencia Vascular Periférica (RVP):
+      // - Si fentolamina bloquea a1, e_a1 -> 0, y la adrenalina activa b2 provocando caída de RVP (Inversión de Dale).
+      // - Si propranolol bloquea b2, la adrenalina actúa sobre a1 puro provocando vasoconstricción potenciada.
+      let targetRVP = 1.0 + (e_a1 * 1.65) - (e_b2 * 0.62) - (e_m2 * 0.28);
+      
+      // Inotropismo y volumen sistólico
+      let targetSV = 70.0 * (1.0 + (e_b1 * 0.75) - (e_m2 * 0.42));
 
+      // Presión Arterial Media teórica
       let targetMAP = 93.3 * targetRVP * (targetSV / 70.0);
       let mapDelta = targetMAP - 93.3;
 
-      let targetBaro = -mapDelta * 0.65;
-      baroTone += (targetBaro - baroTone) * (dt / 1.8);
+      // Reflejo Barorreceptor:
+      // Si la atropina bloquea los receptores muscarínicos, anula la bradicardia refleja vagal.
+      // Si el propranolol bloquea beta, anula la taquicardia refleja simpática.
+      let vagalIntact = 1.0 / m2_shift;
+      let sympatheticIntact = 1.0 / beta1_shift;
 
-      let targetHR = 72.0 + (e_b1 * 75.0) - (e_m2 * 48.0) + baroTone;
+      let targetBaro = 0.0;
+      if (mapDelta > 0) {
+        // Presión sube -> bradicardia refleja mediada por vago
+        targetBaro = -mapDelta * 0.70 * vagalIntact;
+      } else {
+        // Presión cae -> taquicardia refleja simpática
+        targetBaro = -mapDelta * 0.55 * sympatheticIntact;
+      }
+      baroTone += (targetBaro - baroTone) * (dt / 1.6);
 
-      FC += (Math.max(10, Math.min(300, targetHR)) - FC) * 0.12;
-      PAM += (Math.max(15, Math.min(320, targetMAP)) - PAM) * 0.12;
+      // Efecto intrínseco de atropina (suprime tono vagal basal en reposo de 72 lpm elevándolo a ~96 lpm)
+      let vagalToneRemoval = (1.0 - (1.0 / m2_shift)) * 24.0;
+
+      // Frecuencia Cardíaca resultante
+      let targetHR = 72.0 + vagalToneRemoval + (e_b1 * 85.0) - (e_m2 * 54.0) + baroTone;
+
+      FC += (Math.max(10, Math.min(280, targetHR)) - FC) * 0.14;
+      PAM += (Math.max(15, Math.min(300, targetMAP)) - PAM) * 0.14;
 
       let pulsePressure = 40.0 * (targetSV / 70.0);
       systolic = PAM + (pulsePressure * (2.0 / 3.0));
@@ -867,13 +889,16 @@
       }
     }
 
+    /* ==========================================================
+       3. INYECCIÓN CON CADENCIA ESTRICTA DE 10 SEGUNDOS
+       ========================================================== */
     function executeInjection() {
       const dose = parseFloat(inputDose.value);
       const unit = unitSelect.value;
       if (isNaN(dose) || dose <= 0) return;
 
       const doseMg = convertDoseToStandardMg(dose, unit);
-      activeConcentrations[selectedDrug.id] += doseMg * 0.8;
+      activeConcentrations[selectedDrug.id] += doseMg * 0.9;
 
       const evt = {
         id: Date.now(),
@@ -889,8 +914,10 @@
       injectionEvents.push(evt);
       updateHistoryUI();
 
+      // En Modo Inmediato: se avanzan EXACTAMENTE 10.0 SEGUNDOS (100 pasos a dt = 0.1s)
       if (simulationMode === 'immediate') {
-        for (let i = 0; i < 250; i++) {
+        const exactSteps = 100; // 100 * 0.1s = 10.0 segundos exactos entre inyecciones
+        for (let i = 0; i < exactSteps; i++) {
           updatePhysics(0.1);
         }
         updateTelemetryUI();
@@ -912,7 +939,7 @@
     }
 
     /* ==========================================================
-       3. CANVAS RESPONSIVO CON ETIQUETAS COMPLETAS DE DOSIS
+       4. CANVAS RESPONSIVO CON ETIQUETAS COMPLETAS
        ========================================================== */
     const canvas = document.getElementById('polygraphCanvas');
     const ctx = canvas.getContext('2d');
@@ -959,13 +986,12 @@
         }
       }
 
-      currentYMin += (targetYMin - currentYMin) * (simulationMode === 'immediate' ? 0.3 : 0.08);
-      currentYMax += (targetYMax - currentYMax) * (simulationMode === 'immediate' ? 0.3 : 0.08);
+      currentYMin += (targetYMin - currentYMin) * (simulationMode === 'immediate' ? 0.35 : 0.08);
+      currentYMax += (targetYMax - currentYMax) * (simulationMode === 'immediate' ? 0.35 : 0.08);
       scaleIndicator.textContent = `Escala: ${Math.round(currentYMin)}-${Math.round(currentYMax)}`;
 
       const valToY = v => H - ((v - currentYMin) / (currentYMax - currentYMin)) * H;
 
-      // Rejilla de Fondo
       ctx.strokeStyle = 'rgba(0, 95, 115, 0.08)';
       ctx.lineWidth = 1;
       const gridStep = 40 * dpr;
@@ -1017,9 +1043,7 @@
       renderLine('dia', '#BB3E03', 2.0);
       renderLine('fc',  '#0A9396', 2.4);
 
-      // Renderizado de las marcas de DOSIS administradas
       const lastT = historyPoints[historyPoints.length - 1]?.t || 0;
-      let badgeYLevel = 22 * dpr;
 
       injectionEvents.forEach((evt, idx) => {
         const timeDiff = lastT - evt.timestamp;
@@ -1028,7 +1052,6 @@
         if (ptsAgo >= 0 && ptsAgo <= maxPointsOnCanvas) {
           const x = W - (ptsAgo * stepX);
 
-          // Línea vertical punteada
           ctx.strokeStyle = evt.color;
           ctx.lineWidth = 1.5 * dpr;
           ctx.setLineDash([4, 3]);
@@ -1038,18 +1061,15 @@
           ctx.stroke();
           ctx.setLineDash([]);
 
-          // Pin superior
           ctx.fillStyle = evt.color;
           ctx.beginPath();
           ctx.arc(x, 6 * dpr, 4 * dpr, 0, Math.PI * 2);
           ctx.fill();
 
-          // Etiqueta completa con nombre y dosis
           const text = `${evt.drug}: ${evt.dose} ${evt.unit}`;
           ctx.font = `bold ${9.5 * dpr}px -apple-system, sans-serif`;
           const textWidth = ctx.measureText(text).width;
 
-          // Fondo tipo cartela
           const yPos = 20 * dpr + ((idx % 3) * (18 * dpr));
           ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
           ctx.strokeStyle = evt.color;
@@ -1057,7 +1077,6 @@
           ctx.fillRect(x + 3 * dpr, yPos - 11 * dpr, textWidth + 8 * dpr, 14 * dpr);
           ctx.strokeRect(x + 3 * dpr, yPos - 11 * dpr, textWidth + 8 * dpr, 14 * dpr);
 
-          // Texto
           ctx.fillStyle = '#001219';
           ctx.fillText(text, x + 7 * dpr, yPos);
         }
@@ -1065,10 +1084,9 @@
     }
 
     /* ==========================================================
-       4. GENERADOR Y DESCARGA DE IMAGEN COMPLETA (INFORME)
+       5. GENERADOR Y DESCARGA DE IMAGEN (REPORTE COMPLETO)
        ========================================================== */
     function exportGraphAsImage() {
-      // Creamos un canvas temporal de alta resolución para renderizar el informe completo
       const exportCanvas = document.createElement('canvas');
       const expCtx = exportCanvas.getContext('2d');
 
@@ -1083,11 +1101,9 @@
       exportCanvas.width = expW;
       exportCanvas.height = expH;
 
-      // 1. Fondo general blanco
       expCtx.fillStyle = '#ffffff';
       expCtx.fillRect(0, 0, expW, expH);
 
-      // 2. Encabezado institucional
       expCtx.fillStyle = '#001219';
       expCtx.font = 'bold 22px -apple-system, sans-serif';
       expCtx.fillText('CARDIOLAB 3.0 — REPORTE DE SIMULACIÓN FARMACOLÓGICA', 30, 42);
@@ -1097,7 +1113,6 @@
       const nowStr = new Date().toLocaleString();
       expCtx.fillText(`Generado: ${nowStr}  |  Duración de sesión: ${(simTime).toFixed(1)} s`, 30, 66);
 
-      // Leyenda superior en la imagen
       const legendX = expW - 460;
       expCtx.font = 'bold 12px -apple-system, sans-serif';
       
@@ -1113,7 +1128,6 @@
       expCtx.fillRect(legendX + 220, 35, 12, 12);
       expCtx.fillText('Frecuencia Cardíaca', legendX + 238, 46);
 
-      // Línea divisoria
       expCtx.strokeStyle = '#0A9396';
       expCtx.lineWidth = 1.5;
       expCtx.beginPath();
@@ -1121,25 +1135,21 @@
       expCtx.lineTo(expW - 30, 80);
       expCtx.stroke();
 
-      // 3. Dibujar la gráfica del polígrafo en el canvas de exportación
       const gX = 30;
       const gY = headerH;
       const gW = expW - 60;
       const gH = graphH;
 
-      // Fondo de gráfica
       expCtx.fillStyle = '#fbfdfd';
       expCtx.fillRect(gX, gY, gW, gH);
       expCtx.strokeStyle = 'rgba(0, 95, 115, 0.3)';
       expCtx.strokeRect(gX, gY, gW, gH);
 
-      // Rejilla de la gráfica
       const points = historyPoints.slice(-maxPointsOnCanvas);
       const yMin = currentYMin;
       const yMax = currentYMax;
       const toY = v => gY + gH - ((v - yMin) / (yMax - yMin)) * gH;
 
-      // Líneas horizontales de escala
       expCtx.strokeStyle = 'rgba(0, 95, 115, 0.12)';
       expCtx.lineWidth = 1;
       const range = yMax - yMin;
@@ -1158,7 +1168,6 @@
         expCtx.fillText(`${val}`, gX + 8, y - 4);
       }
 
-      // Trazados
       if (points.length > 1) {
         const stepX = gW / (maxPointsOnCanvas - 1);
         const offset = maxPointsOnCanvas - points.length;
@@ -1180,7 +1189,6 @@
         plotCurve('dia', '#BB3E03', 2.0);
         plotCurve('fc',  '#0A9396', 2.5);
 
-        // Inyecciones en la gráfica exportada
         const lastT = points[points.length - 1].t;
         injectionEvents.forEach((evt, idx) => {
           const timeAgo = lastT - evt.timestamp;
@@ -1197,7 +1205,6 @@
             expCtx.stroke();
             expCtx.setLineDash([]);
 
-            // Etiqueta
             const text = `${evt.drug}: ${evt.dose} ${evt.unit}`;
             expCtx.font = 'bold 11px -apple-system, sans-serif';
             const tw = expCtx.measureText(text).width;
@@ -1214,13 +1221,11 @@
         });
       }
 
-      // 4. Tabla inferior con el detalle de dosis administradas
       const tY = gY + gH + 24;
       expCtx.fillStyle = '#005F73';
       expCtx.font = 'bold 14px -apple-system, sans-serif';
       expCtx.fillText('DETALLE CRONOLÓGICO DE DOSIS ADMINISTRADAS', 30, tY);
 
-      // Cabecera de la tabla
       const thY = tY + 12;
       expCtx.fillStyle = 'rgba(0, 95, 115, 0.1)';
       expCtx.fillRect(30, thY, expW - 60, 24);
@@ -1236,7 +1241,6 @@
       expCtx.fillText('PAM BASAL', 720, thY + 16);
       expCtx.fillText('FC BASAL', 920, thY + 16);
 
-      // Filas de dosis
       if (injectionEvents.length === 0) {
         expCtx.fillStyle = '#666';
         expCtx.font = 'italic 12px -apple-system, sans-serif';
@@ -1255,7 +1259,6 @@
           expCtx.fillStyle = '#001219';
           expCtx.fillText(`${i + 1}`, 45, rowY + 17);
 
-          // Color y nombre
           expCtx.fillStyle = evt.color;
           expCtx.font = 'bold 11px -apple-system, sans-serif';
           expCtx.fillText(evt.drug, 90, rowY + 17);
@@ -1269,7 +1272,6 @@
         });
       }
 
-      // Descargar como PNG
       const link = document.createElement('a');
       link.download = `CardioLab_Grafica_${Date.now()}.png`;
       link.href = exportCanvas.toDataURL('image/png');
@@ -1277,7 +1279,7 @@
     }
 
     /* ==========================================================
-       5. INTERFAZ Y MANEJO DE EVENTOS
+       6. INTERFAZ Y MANEJO DE EVENTOS
        ========================================================== */
     const drugGrid = document.getElementById('drugGrid');
     const inputDose = document.getElementById('inputDose');
@@ -1393,7 +1395,7 @@
     };
 
     document.getElementById('btnReset').onclick = () => {
-      simTime = 0;
+      simTime = 0.0;
       systolic = 120.0;
       diastolic = 80.0;
       PAM = 93.3;
@@ -1429,7 +1431,7 @@
     };
 
     /* ==========================================================
-       6. BUCLE PRINCIPAL (60 FPS)
+       7. BUCLE PRINCIPAL (60 FPS)
        ========================================================== */
     let lastTime = performance.now();
     let simAccumulator = 0;
